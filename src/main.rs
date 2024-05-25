@@ -310,7 +310,7 @@ impl VM {
                 _ => '?',
             });
         }
-        for _ in 0..(16 - self.memory.len() % 16) {
+        for _ in 0..((16 - self.memory.len() % 16) % 16) {
             print!("   ");
         }
         println!("  {}", line);
@@ -333,8 +333,10 @@ fn main() {
     vm.add_builtin_word("find", Op::Find);
     vm.add_builtin_word("exit", Op::Exit);
     vm.add_colon_word("test", vec!["one", "dup", "add"]);
-    vm.add_colon_word("begin", vec!["test"]);
+    vm.add_colon_word("begin", vec!["one", "test", "add"]);
     vm.set_entry_point("begin");
+    vm.step().unwrap();
+    vm.step().unwrap();
     vm.step().unwrap();
     vm.step().unwrap();
     vm.step().unwrap();
