@@ -30,8 +30,13 @@ enum Op {
 enum VMError {
     IllegalAddress,
     UnknownOpcode,
-    StackUnderflow,
+    DataStackUnderflow,
+    ReturnStackUnderflow,
     UnalignedAccess,
+}
+
+fn align_addr(addr: u32) -> u32 {
+    ((addr + 3) / 4) * 4
 }
 
 type VMResult<T> = Result<T, VMError>;
@@ -41,6 +46,7 @@ struct VM {
     memory: Vec<u8>,
     data_stack: Vec<u32>,
     return_stack: Vec<u32>,
+    pc: u32,
 }
 
 impl VM {
@@ -49,6 +55,7 @@ impl VM {
             memory: vec![0; INITIAL_HERE as usize],
             data_stack: Vec::new(),
             return_stack: Vec::new(),
+            pc: 0,
         };
         me.write_u32(ADDR_BASE, 10).unwrap();
         me.write_u32(ADDR_HERE, INITIAL_HERE).unwrap();
@@ -60,12 +67,20 @@ impl VM {
     }
 
     fn pop_data(&mut self) -> VMResult<u32> {
-        self.data_stack.pop().ok_or(VMError::StackUnderflow)
+        self.data_stack.pop().ok_or(VMError::DataStackUnderflow)
+    }
+
+    fn push_return(&mut self, addr: u32) {
+        self.return_stack.push(addr)
+    }
+
+    fn pop_return(&mut self) -> VMResult<u32> {
+        self.return_stack.pop().ok_or(VMError::ReturnStackUnderflow)
     }
 
     fn align(&mut self) -> VMSuccess {
         let mut here = self.read_u32(ADDR_HERE)?;
-        here = ((here + 3) / 4) * 4;
+        here = align_addr(here);
         self.write_u32(ADDR_HERE, here)
     }
 
@@ -190,7 +205,6 @@ impl VM {
         let word_len = self.pop_data()?;
         let word_addr = self.pop_data()?;
         self.write_u8(here, word_len as u8)?;
-        self.display();
         here += 1;
         for i in 0..word_len {
             self.write_u8(here, self.read_u8(word_addr + i)?)?;
@@ -200,10 +214,19 @@ impl VM {
         Ok(())
     }
 
+    fn step(&mut self) -> VMSuccess {
+        let xt = self.read_u32(self.pc)?;
+        self.pc += 4;
+        self.exec(xt)
+    }
+
     fn exec(&mut self, addr: u32) -> VMSuccess {
         let op: Op = self.read_u8(addr)?.into();
         match op {
-            Op::DoColonDef => {}
+            Op::DoColonDef => {
+                self.push_return(self.pc);
+                self.pc = align_addr(addr + 1);
+            }
             Op::Dup => {
                 let a = self.pop_data()?;
                 self.push_data(a);
@@ -220,34 +243,44 @@ impl VM {
             Op::VarState => self.push_data(ADDR_STATE),
             Op::VarHere => self.push_data(ADDR_HERE),
             Op::Find => self.find()?,
-            Op::Exit => unimplemented!(),
+            Op::Exit => self.pc = self.pop_return()?,
             Op::Unknown => return Err(VMError::UnknownOpcode),
         }
         Ok(())
     }
 
+    // note: add_builtin_word and add_colon_word don't return
+    // a Result because they should only ever be called at init
     fn add_builtin_word(&mut self, word: &str, op: Op) {
         self.buffer_word(word);
         self.create().unwrap();
         self.write_u8_here(op.into()).unwrap()
     }
 
-    fn add_colon_word(&mut self, word: &str, def: Vec<&str>) -> VMSuccess {
+    fn add_colon_word(&mut self, word: &str, def: Vec<&str>) {
         self.buffer_word(word);
-        self.create()?;
-        self.write_u8_here(Op::DoColonDef.into())?;
-        self.align()?;
+        self.create().unwrap();
+        self.write_u8_here(Op::DoColonDef.into()).unwrap();
+        self.align().unwrap();
         for s in def {
-            let a = self.buffer_and_find_word(s)?;
-            let cfa = self.header_addr_to_cfa(a)?;
-            self.write_u32_here(cfa)?;
+            let a = self.buffer_and_find_word(s).unwrap();
+            let cfa = self.header_addr_to_cfa(a).unwrap();
+            self.write_u32_here(cfa).unwrap();
         }
-        let a = self.buffer_and_find_word("exit")?;
-        let cfa = self.header_addr_to_cfa(a)?;
-        self.write_u32_here(cfa)
+        let a = self.buffer_and_find_word("exit").unwrap();
+        let cfa = self.header_addr_to_cfa(a).unwrap();
+        self.write_u32_here(cfa).unwrap();
+    }
+
+    fn set_entry_point(&mut self, word: &str) {
+        let addr = self.buffer_and_find_word(word).unwrap();
+        let cfa = self.header_addr_to_cfa(addr).unwrap();
+        assert!(self.read_u8(cfa).unwrap() == 0);
+        self.pc = align_addr(cfa + 1);
     }
 
     fn display(&self) {
+        println!("Current word address: {:x}", self.pc);
         println!(
             "Data stack ({} items): {:?}",
             self.data_stack.len(),
@@ -257,6 +290,9 @@ impl VM {
             "Return stack ({} items): {:?}",
             self.return_stack.len(),
             self.return_stack
+                .iter()
+                .map(|n| format!("{:x}", n))
+                .collect::<Vec<_>>()
         );
         print!("Contents of memory:");
         let mut line = String::with_capacity(16);
@@ -291,13 +327,18 @@ fn str_to_bytes(s: &str) -> Vec<u8> {
 fn main() {
     println!("Hello, world!");
     let mut vm = VM::new();
-    vm.display();
     vm.add_builtin_word("dup", Op::Dup);
     vm.add_builtin_word("one", Op::One);
     vm.add_builtin_word("add", Op::Add);
     vm.add_builtin_word("find", Op::Find);
     vm.add_builtin_word("exit", Op::Exit);
-    vm.add_colon_word("test", vec!["one", "dup", "add"])
-        .unwrap();
+    vm.add_colon_word("test", vec!["one", "dup", "add"]);
+    vm.add_colon_word("begin", vec!["test"]);
+    vm.set_entry_point("begin");
+    vm.step().unwrap();
+    vm.step().unwrap();
+    vm.step().unwrap();
+    vm.step().unwrap();
+    vm.step().unwrap();
     vm.display();
 }
