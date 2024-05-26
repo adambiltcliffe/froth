@@ -17,12 +17,7 @@ enum Op {
     DoColonDef = 0,
     Dup,
     Add,
-    One,
     Lit,
-    VarLatest,
-    VarBase,
-    VarState,
-    VarHere,
     Find,
     Exit,
     #[num_enum(default)]
@@ -233,15 +228,10 @@ impl VM {
                 let b = self.pop_data()?;
                 self.push_data(a.wrapping_add(b));
             }
-            Op::One => self.push_data(1),
             Op::Lit => {
                 self.push_data(self.read_u32(self.pc)?);
                 self.pc += 4;
             }
-            Op::VarLatest => self.push_data(ADDR_LATEST),
-            Op::VarBase => self.push_data(ADDR_BASE),
-            Op::VarState => self.push_data(ADDR_STATE),
-            Op::VarHere => self.push_data(ADDR_HERE),
             Op::Find => self.find()?,
             Op::Exit => self.pc = self.pop_return()?,
             Op::Unknown => return Err(VMError::UnknownOpcode),

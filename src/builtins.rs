@@ -1,4 +1,4 @@
-use crate::{align_addr, Op, ADDR_HERE, VM};
+use crate::{align_addr, Op, ADDR_BASE, ADDR_HERE, ADDR_LATEST, ADDR_STATE, VM};
 
 impl VM {
     // note: add_builtin_word and add_colon_word don't return
@@ -30,12 +30,18 @@ impl VM {
 
     pub(crate) fn init(&mut self) {
         let dup = self.add_builtin_word("dup", Op::Dup);
-        let one = self.add_builtin_word("one", Op::One);
         let add = self.add_builtin_word("add", Op::Add);
         let lit = self.add_builtin_word("lit", Op::Lit);
         let _find = self.add_builtin_word("find", Op::Find);
         let exit = self.add_builtin_word("exit", Op::Exit);
+
+        let one = self.add_colon_word("one", vec![lit, 1, exit]);
         let seven = self.add_colon_word("seven", vec![lit, 7, exit]);
+        let _base = self.add_colon_word("base", vec![lit, ADDR_BASE, exit]);
+        let _here = self.add_colon_word("here", vec![lit, ADDR_HERE, exit]);
+        let _latest = self.add_colon_word("latest", vec![lit, ADDR_LATEST, exit]);
+        let _state = self.add_colon_word("state", vec![lit, ADDR_STATE, exit]);
+
         let test = self.add_colon_word("test", vec![one, dup, add, exit]);
         let begin = self.add_colon_word("begin", vec![one, test, add, seven, exit]);
         self.set_entry_point(begin);
