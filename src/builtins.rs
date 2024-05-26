@@ -30,6 +30,10 @@ impl VM {
 
     pub(crate) fn init(&mut self) {
         let dup = self.add_builtin_word("dup", Op::Dup);
+        let _drop = self.add_builtin_word("drop", Op::Drop);
+        let _swap = self.add_builtin_word("swap", Op::Swap);
+        let _fetch = self.add_builtin_word("@", Op::Fetch);
+        let _store = self.add_builtin_word("!", Op::Store);
         let add = self.add_builtin_word("add", Op::Add);
         let lit = self.add_builtin_word("lit", Op::Lit);
         let _find = self.add_builtin_word("find", Op::Find);

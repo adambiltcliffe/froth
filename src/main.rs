@@ -16,6 +16,10 @@ const MAX_EXTEND: u32 = 64;
 enum Op {
     DoColonDef = 0,
     Dup,
+    Drop,
+    Swap,
+    Fetch,
+    Store,
     Add,
     Lit,
     Find,
@@ -222,6 +226,24 @@ impl VM {
                 let a = self.pop_data()?;
                 self.push_data(a);
                 self.push_data(a);
+            }
+            Op::Drop => {
+                self.pop_data()?;
+            }
+            Op::Swap => {
+                let a = self.pop_data()?;
+                let b = self.pop_data()?;
+                self.push_data(a);
+                self.push_data(b);
+            }
+            Op::Fetch => {
+                let addr = self.pop_data()?;
+                self.push_data(self.read_u32(addr)?);
+            }
+            Op::Store => {
+                let addr = self.pop_data()?;
+                let val = self.pop_data()?;
+                self.write_u32(addr, val)?;
             }
             Op::Add => {
                 let a = self.pop_data()?;
