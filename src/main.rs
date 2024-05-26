@@ -18,6 +18,7 @@ enum Op {
     Dup,
     Add,
     One,
+    Lit,
     VarLatest,
     VarBase,
     VarState,
@@ -178,13 +179,6 @@ impl VM {
         Ok(0)
     }
 
-    fn buffer_and_find_word(&mut self, word: &str) -> VMResult<u32> {
-        self.buffer_word(word);
-        let len = self.pop_data()? as u8;
-        let addr = self.pop_data()?;
-        self.find_word(addr, len)
-    }
-
     fn find(&mut self) -> VMSuccess {
         let len = self.pop_data()? as u8;
         let addr = self.pop_data()?;
@@ -240,6 +234,10 @@ impl VM {
                 self.push_data(a.wrapping_add(b));
             }
             Op::One => self.push_data(1),
+            Op::Lit => {
+                self.push_data(self.read_u32(self.pc)?);
+                self.pc += 4;
+            }
             Op::VarLatest => self.push_data(ADDR_LATEST),
             Op::VarBase => self.push_data(ADDR_BASE),
             Op::VarState => self.push_data(ADDR_STATE),
@@ -300,12 +298,8 @@ fn main() {
     println!("Hello, world!");
     let mut vm = VM::new();
     vm.init();
-    vm.step().unwrap();
-    vm.step().unwrap();
-    vm.step().unwrap();
-    vm.step().unwrap();
-    vm.step().unwrap();
-    vm.step().unwrap();
-    vm.step().unwrap();
-    vm.display();
+    loop {
+        vm.display();
+        vm.step().unwrap();
+    }
 }
