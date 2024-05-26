@@ -26,11 +26,13 @@ enum Op {
     Store,
     Add,
     Lit,
-    Find,
     Key,
     Word,
     Emit,
+    Find,
+    ToCFA,
     Create,
+    Execute,
     Exit,
     #[num_enum(default)]
     Unknown,
@@ -293,6 +295,10 @@ impl VM {
                 self.pc += 4;
             }
             Op::Find => self.find()?,
+            Op::ToCFA => {
+                let header_addr = self.pop_data()?;
+                self.push_data(self.header_addr_to_cfa(header_addr)?);
+            }
             Op::Key => match self.input.next() {
                 None | Some(Err(_)) => self.running = false,
                 Some(Ok(b)) => self.push_data(b as u32),
@@ -300,6 +306,10 @@ impl VM {
             Op::Word => self.word()?,
             Op::Emit => print!("{}", self.pop_data()? as u8 as char),
             Op::Create => self.create()?,
+            Op::Execute => {
+                let xt = self.pop_data()?;
+                self.exec(xt)?;
+            }
             Op::Exit => self.pc = self.pop_return()?,
             Op::Unknown => return Err(VMError::UnknownOpcode),
         }

@@ -36,11 +36,13 @@ impl VM {
         let _store = self.add_builtin_word("!", Op::Store);
         let _add = self.add_builtin_word("add", Op::Add);
         let lit = self.add_builtin_word("lit", Op::Lit);
-        let _find = self.add_builtin_word("find", Op::Find);
-        let key = self.add_builtin_word("key", Op::Key);
+        let _key = self.add_builtin_word("key", Op::Key);
         let word = self.add_builtin_word("word", Op::Word);
-        let emit = self.add_builtin_word("emit", Op::Emit);
-        let create = self.add_builtin_word("create", Op::Create);
+        let _emit = self.add_builtin_word("emit", Op::Emit);
+        let find = self.add_builtin_word("find", Op::Find);
+        let to_cfa = self.add_builtin_word(">cfa", Op::ToCFA);
+        let _create = self.add_builtin_word("create", Op::Create);
+        let execute = self.add_builtin_word("execute", Op::Execute);
         let exit = self.add_builtin_word("exit", Op::Exit);
 
         let one = self.add_colon_word("one", vec![lit, 1, exit]); // temporary
@@ -48,8 +50,9 @@ impl VM {
         let _here = self.add_colon_word("here", vec![lit, ADDR_HERE, exit]);
         let _latest = self.add_colon_word("latest", vec![lit, ADDR_LATEST, exit]);
         let _state = self.add_colon_word("state", vec![lit, ADDR_STATE, exit]);
+        let interpret = self.add_colon_word("interpret", vec![word, find, to_cfa, execute, exit]);
 
-        let test = self.add_colon_word("test", vec![word, create, word, create, exit]);
+        let test = self.add_colon_word("test", vec![interpret, interpret, exit]);
         let begin = self.add_colon_word("begin", vec![one, test, exit]);
         self.set_entry_point(begin);
     }
