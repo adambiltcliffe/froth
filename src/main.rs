@@ -1,4 +1,8 @@
 use num_enum::{FromPrimitive, IntoPrimitive};
+use std::{
+    io::{Bytes, Read, Stdin},
+    iter::Peekable,
+};
 
 mod builtins;
 
@@ -23,6 +27,10 @@ enum Op {
     Add,
     Lit,
     Find,
+    Key,
+    Word,
+    Emit,
+    Create,
     Exit,
     #[num_enum(default)]
     Unknown,
@@ -49,6 +57,8 @@ struct VM {
     data_stack: Vec<u32>,
     return_stack: Vec<u32>,
     pc: u32,
+    input: Peekable<Bytes<Stdin>>,
+    running: bool,
 }
 
 impl VM {
@@ -58,6 +68,8 @@ impl VM {
             data_stack: Vec::new(),
             return_stack: Vec::new(),
             pc: 0,
+            input: std::io::stdin().bytes().peekable(),
+            running: true,
         };
         me.write_u32(ADDR_BASE, 10).unwrap();
         me.write_u32(ADDR_HERE, INITIAL_HERE).unwrap();
@@ -209,6 +221,32 @@ impl VM {
         Ok(())
     }
 
+    fn word(&mut self) -> VMSuccess {
+        let mut i = 0;
+        while matches!(self.input.peek(), Some(Ok(b)) if b.is_ascii_whitespace()) {
+            self.input.next();
+        }
+        let mut c = self.input.next();
+        while !matches!(c, Some(Ok(b)) if b.is_ascii_whitespace()) {
+            match c {
+                Some(Ok(b)) => {
+                    if i < 31 {
+                        self.write_u8(ADDR_WORD_BUFFER + i, b)?;
+                        i += 1;
+                    }
+                    c = self.input.next();
+                }
+                _ => {
+                    self.running = false;
+                    return Ok(());
+                }
+            }
+        }
+        self.push_data(ADDR_WORD_BUFFER);
+        self.push_data(i);
+        Ok(())
+    }
+
     fn step(&mut self) -> VMSuccess {
         let xt = self.read_u32(self.pc)?;
         self.pc += 4;
@@ -255,6 +293,13 @@ impl VM {
                 self.pc += 4;
             }
             Op::Find => self.find()?,
+            Op::Key => match self.input.next() {
+                None | Some(Err(_)) => self.running = false,
+                Some(Ok(b)) => self.push_data(b as u32),
+            },
+            Op::Word => self.word()?,
+            Op::Emit => print!("{}", self.pop_data()? as u8 as char),
+            Op::Create => self.create()?,
             Op::Exit => self.pc = self.pop_return()?,
             Op::Unknown => return Err(VMError::UnknownOpcode),
         }
@@ -310,7 +355,7 @@ fn main() {
     println!("Hello, world!");
     let mut vm = VM::new();
     vm.init();
-    loop {
+    while vm.running {
         vm.display();
         vm.step().unwrap();
     }
