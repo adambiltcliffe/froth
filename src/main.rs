@@ -1,5 +1,7 @@
 use num_enum::{FromPrimitive, IntoPrimitive};
 
+mod builtins;
+
 const ADDR_LATEST: u32 = 0;
 const ADDR_BASE: u32 = 4;
 const ADDR_STATE: u32 = 8;
@@ -249,36 +251,6 @@ impl VM {
         Ok(())
     }
 
-    // note: add_builtin_word and add_colon_word don't return
-    // a Result because they should only ever be called at init
-    fn add_builtin_word(&mut self, word: &str, op: Op) {
-        self.buffer_word(word);
-        self.create().unwrap();
-        self.write_u8_here(op.into()).unwrap()
-    }
-
-    fn add_colon_word(&mut self, word: &str, def: Vec<&str>) {
-        self.buffer_word(word);
-        self.create().unwrap();
-        self.write_u8_here(Op::DoColonDef.into()).unwrap();
-        self.align().unwrap();
-        for s in def {
-            let a = self.buffer_and_find_word(s).unwrap();
-            let cfa = self.header_addr_to_cfa(a).unwrap();
-            self.write_u32_here(cfa).unwrap();
-        }
-        let a = self.buffer_and_find_word("exit").unwrap();
-        let cfa = self.header_addr_to_cfa(a).unwrap();
-        self.write_u32_here(cfa).unwrap();
-    }
-
-    fn set_entry_point(&mut self, word: &str) {
-        let addr = self.buffer_and_find_word(word).unwrap();
-        let cfa = self.header_addr_to_cfa(addr).unwrap();
-        assert!(self.read_u8(cfa).unwrap() == 0);
-        self.pc = align_addr(cfa + 1);
-    }
-
     fn display(&self) {
         println!("Current word address: {:x}", self.pc);
         println!(
@@ -327,14 +299,7 @@ fn str_to_bytes(s: &str) -> Vec<u8> {
 fn main() {
     println!("Hello, world!");
     let mut vm = VM::new();
-    vm.add_builtin_word("dup", Op::Dup);
-    vm.add_builtin_word("one", Op::One);
-    vm.add_builtin_word("add", Op::Add);
-    vm.add_builtin_word("find", Op::Find);
-    vm.add_builtin_word("exit", Op::Exit);
-    vm.add_colon_word("test", vec!["one", "dup", "add"]);
-    vm.add_colon_word("begin", vec!["one", "test", "add"]);
-    vm.set_entry_point("begin");
+    vm.init();
     vm.step().unwrap();
     vm.step().unwrap();
     vm.step().unwrap();
