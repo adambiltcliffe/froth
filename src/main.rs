@@ -48,6 +48,8 @@ enum VMError {
     DataStackUnderflow,
     ReturnStackUnderflow,
     UnalignedAccess,
+    IOError,
+    Terminated,
 }
 
 fn error_name(err: &VMError) -> &'static str {
@@ -57,6 +59,8 @@ fn error_name(err: &VMError) -> &'static str {
         VMError::DataStackUnderflow => "data stack underflow",
         VMError::ReturnStackUnderflow => "return stack underflow",
         VMError::UnalignedAccess => "unaligned memory access",
+        VMError::IOError => "i/o error",
+        VMError::Terminated => "input terminated",
     }
 }
 
@@ -75,7 +79,8 @@ struct VM {
     entry: u32,
     input: Peekable<Bytes<Stdin>>,
     running: bool,
-    error: Option<VMError>,
+    line: bool,
+    errors: Vec<VMError>,
 }
 
 impl VM {
@@ -88,7 +93,8 @@ impl VM {
             entry: 0,
             input: std::io::stdin().bytes().peekable(),
             running: true,
-            error: None,
+            line: true,
+            errors: Vec::new(),
         };
         me.write_u32(ADDR_BASE, 10).unwrap();
         me.write_u32(ADDR_HERE, INITIAL_HERE).unwrap();
@@ -240,24 +246,37 @@ impl VM {
         Ok(())
     }
 
+    fn input_byte(&mut self) -> VMResult<u8> {
+        match self.input.next() {
+            None => {
+                self.running = false;
+                Err(VMError::Terminated)
+            }
+            Some(Err(_)) => {
+                self.running = false;
+                Err(VMError::IOError)
+            }
+            Some(Ok(b)) => {
+                if b == 13 {
+                    self.line = true
+                }
+                Ok(b)
+            }
+        }
+    }
+
     fn word(&mut self) -> VMSuccess {
         let mut i = 0;
-        while matches!(self.input.peek(), Some(Ok(b)) if b.is_ascii_whitespace()) {
-            self.input.next();
-        }
-        let mut c = self.input.next();
-        while !matches!(c, Some(Ok(b)) if b.is_ascii_whitespace()) {
-            match c {
-                Some(Ok(b)) => {
-                    if i < 31 {
-                        self.write_u8(ADDR_WORD_BUFFER + i, b)?;
-                        i += 1;
-                    }
-                    c = self.input.next();
+        loop {
+            let b = self.input_byte()?;
+            if b.is_ascii_whitespace() {
+                if i > 0 {
+                    break;
                 }
-                _ => {
-                    self.running = false;
-                    return Ok(());
+            } else {
+                if i < 31 {
+                    self.write_u8(ADDR_WORD_BUFFER + i, b)?;
+                    i += 1;
                 }
             }
         }
@@ -276,13 +295,15 @@ impl VM {
         match self.exec_pc() {
             Ok(()) => (),
             Err(e) => {
-                if self.error.is_none() {
-                    self.error = Some(e);
+                if self.errors.len() < 10 {
+                    self.errors.push(e);
                     // attempt recovery
                     self.pc = self.entry
                 } else {
-                    println!("{}", error_name(&e));
-                    println!("recovery failed, aborting");
+                    for e in &self.errors {
+                        println!("{}", error_name(e));
+                    }
+                    println!("too many errors, aborting");
                     self.running = false;
                 }
             }
@@ -312,7 +333,8 @@ impl VM {
             }
             Op::Fetch => {
                 let addr = self.pop_data()?;
-                self.push_data(self.read_u32(addr)?);
+                let data = self.read_u32(addr)?;
+                self.push_data(data);
             }
             Op::Store => {
                 let addr = self.pop_data()?;
@@ -333,10 +355,10 @@ impl VM {
                 let header_addr = self.pop_data()?;
                 self.push_data(self.header_addr_to_cfa(header_addr)?);
             }
-            Op::Key => match self.input.next() {
-                None | Some(Err(_)) => self.running = false,
-                Some(Ok(b)) => self.push_data(b as u32),
-            },
+            Op::Key => {
+                let data = self.input_byte()? as u32;
+                self.push_data(data)
+            }
             Op::Word => self.word()?,
             Op::Emit => print!("{}", self.pop_data()? as u8 as char),
             Op::Create => self.create()?,
@@ -351,15 +373,18 @@ impl VM {
             Op::Exit => self.pc = self.pop_return()?,
             Op::Reset => self.return_stack.clear(),
             Op::Prompt => {
-                match &self.error {
-                    None => println!(" ok"),
-                    Some(err) => {
-                        println!(" {}", error_name(err));
-                        self.error = None
+                if self.line {
+                    if self.errors.len() == 0 {
+                        println!(" ok")
+                    } else {
+                        for err in self.errors.drain(..) {
+                            println!(" {}", error_name(&err));
+                        }
                     }
+                    print!(">");
+                    std::io::stdout().flush().expect("io error");
+                    self.line = false;
                 }
-                print!(">");
-                std::io::stdout().flush().expect("io error");
             }
             Op::Unknown => return Err(VMError::UnknownOpcode),
         }
