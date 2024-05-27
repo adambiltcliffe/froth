@@ -1,6 +1,6 @@
 use num_enum::{FromPrimitive, IntoPrimitive};
 use std::{
-    io::{Bytes, Read, Stdin},
+    io::{Bytes, Read, Stdin, Write},
     iter::Peekable,
 };
 
@@ -33,7 +33,10 @@ enum Op {
     ToCFA,
     Create,
     Execute,
+    Branch,
     Exit,
+    Reset,
+    Prompt,
     #[num_enum(default)]
     Unknown,
 }
@@ -45,6 +48,16 @@ enum VMError {
     DataStackUnderflow,
     ReturnStackUnderflow,
     UnalignedAccess,
+}
+
+fn error_name(err: &VMError) -> &'static str {
+    match err {
+        VMError::IllegalAddress => "illegal address",
+        VMError::UnknownOpcode => "unknown opcode",
+        VMError::DataStackUnderflow => "data stack underflow",
+        VMError::ReturnStackUnderflow => "return stack underflow",
+        VMError::UnalignedAccess => "unaligned memory access",
+    }
 }
 
 fn align_addr(addr: u32) -> u32 {
@@ -59,8 +72,10 @@ struct VM {
     data_stack: Vec<u32>,
     return_stack: Vec<u32>,
     pc: u32,
+    entry: u32,
     input: Peekable<Bytes<Stdin>>,
     running: bool,
+    error: Option<VMError>,
 }
 
 impl VM {
@@ -70,8 +85,10 @@ impl VM {
             data_stack: Vec::new(),
             return_stack: Vec::new(),
             pc: 0,
+            entry: 0,
             input: std::io::stdin().bytes().peekable(),
             running: true,
+            error: None,
         };
         me.write_u32(ADDR_BASE, 10).unwrap();
         me.write_u32(ADDR_HERE, INITIAL_HERE).unwrap();
@@ -249,10 +266,27 @@ impl VM {
         Ok(())
     }
 
-    fn step(&mut self) -> VMSuccess {
+    fn exec_pc(&mut self) -> VMSuccess {
         let xt = self.read_u32(self.pc)?;
         self.pc += 4;
         self.exec(xt)
+    }
+
+    fn step(&mut self) {
+        match self.exec_pc() {
+            Ok(()) => (),
+            Err(e) => {
+                if self.error.is_none() {
+                    self.error = Some(e);
+                    // attempt recovery
+                    self.pc = self.entry
+                } else {
+                    println!("{}", error_name(&e));
+                    println!("recovery failed, aborting");
+                    self.running = false;
+                }
+            }
+        }
     }
 
     fn exec(&mut self, addr: u32) -> VMSuccess {
@@ -310,7 +344,23 @@ impl VM {
                 let xt = self.pop_data()?;
                 self.exec(xt)?;
             }
+            Op::Branch => {
+                let offs = self.read_u32(self.pc)?;
+                self.pc = self.pc.wrapping_sub(4).wrapping_add(offs);
+            }
             Op::Exit => self.pc = self.pop_return()?,
+            Op::Reset => self.return_stack.clear(),
+            Op::Prompt => {
+                match &self.error {
+                    None => println!(" ok"),
+                    Some(err) => {
+                        println!(" {}", error_name(err));
+                        self.error = None
+                    }
+                }
+                print!(">");
+                std::io::stdout().flush().expect("io error");
+            }
             Op::Unknown => return Err(VMError::UnknownOpcode),
         }
         Ok(())
@@ -366,7 +416,7 @@ fn main() {
     let mut vm = VM::new();
     vm.init();
     while vm.running {
-        vm.display();
-        vm.step().unwrap();
+        //vm.display();
+        vm.step();
     }
 }

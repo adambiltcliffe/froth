@@ -25,7 +25,9 @@ impl VM {
 
     fn set_entry_point(&mut self, xt: u32) {
         assert!(self.read_u8(xt).unwrap() == 0);
-        self.pc = align_addr(xt + 1);
+        let addr = align_addr(xt + 1);
+        self.entry = addr;
+        self.pc = addr;
     }
 
     pub(crate) fn init(&mut self) {
@@ -43,17 +45,22 @@ impl VM {
         let to_cfa = self.add_builtin_word(">cfa", Op::ToCFA);
         let _create = self.add_builtin_word("create", Op::Create);
         let execute = self.add_builtin_word("execute", Op::Execute);
+        let branch = self.add_builtin_word("branch", Op::Branch);
         let exit = self.add_builtin_word("exit", Op::Exit);
+        let reset = self.add_builtin_word("reset", Op::Reset);
+        let prompt = self.add_builtin_word("prompt", Op::Prompt);
 
-        let one = self.add_colon_word("one", vec![lit, 1, exit]); // temporary
+        let _one = self.add_colon_word("one", vec![lit, 1, exit]); // temporary
         let _base = self.add_colon_word("base", vec![lit, ADDR_BASE, exit]);
         let _here = self.add_colon_word("here", vec![lit, ADDR_HERE, exit]);
         let _latest = self.add_colon_word("latest", vec![lit, ADDR_LATEST, exit]);
         let _state = self.add_colon_word("state", vec![lit, ADDR_STATE, exit]);
         let interpret = self.add_colon_word("interpret", vec![word, find, to_cfa, execute, exit]);
+        let quit = self.add_colon_word(
+            "quit",
+            vec![reset, prompt, interpret, branch, -12i32 as u32],
+        );
 
-        let test = self.add_colon_word("test", vec![interpret, interpret, exit]);
-        let begin = self.add_colon_word("begin", vec![one, test, exit]);
-        self.set_entry_point(begin);
+        self.set_entry_point(quit);
     }
 }
