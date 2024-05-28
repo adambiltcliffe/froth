@@ -22,9 +22,15 @@ enum Op {
     Dup,
     Drop,
     Swap,
+    ToR,
+    FromR,
     Fetch,
     Store,
     Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Modulus,
     Lit,
     Key,
     Word,
@@ -38,6 +44,7 @@ enum Op {
     Exit,
     Reset,
     Prompt,
+    Interpret,
     #[num_enum(default)]
     Unknown,
 }
@@ -50,6 +57,7 @@ enum VMError {
     ReturnStackUnderflow,
     UnalignedAccess,
     IOError,
+    UnknownWord,
     Terminated,
 }
 
@@ -61,6 +69,7 @@ fn error_name(err: &VMError) -> &'static str {
         VMError::ReturnStackUnderflow => "return stack underflow",
         VMError::UnalignedAccess => "unaligned memory access",
         VMError::IOError => "i/o error",
+        VMError::UnknownWord => "unknown word",
         VMError::Terminated => "input terminated",
     }
 }
@@ -231,9 +240,16 @@ impl VM {
     }
 
     fn number(&mut self) -> VMSuccess {
-        let base = self.read_u32(ADDR_BASE)?;
         let len = self.pop_data()?;
         let addr = self.pop_data()?;
+        let (value, error) = self.parse_number(addr, len)?;
+        self.push_data(value);
+        self.push_data(error);
+        Ok(())
+    }
+
+    fn parse_number(&self, addr: u32, len: u32) -> VMResult<(u32, u32)> {
+        let base = self.read_u32(ADDR_BASE)?;
         let mut offs = 0;
         let sym = self.read_u8(addr)?;
         let sign = if sym as char == '-' && len > 1 {
@@ -257,14 +273,13 @@ impl VM {
         }
         if offs == 1 && sign == -1 {
             // only character parsed was '-'
-            self.push_data(0);
-            self.push_data(len); // no characters consumed, indicating error
+            return Ok((0, len)); // no characters consumed, indicating error
         } else {
-            self.push_data((result as i32 * sign) as u32);
-            self.push_data(len - offs);
+            let value = (result as i32 * sign) as u32;
+            let error = len - offs;
             println!("result was {}", (result as i32 * sign) as u32);
+            return Ok((value, error));
         }
-        Ok(())
     }
 
     fn header_addr_to_cfa(&self, addr: u32) -> VMResult<u32> {
@@ -310,7 +325,7 @@ impl VM {
         }
     }
 
-    fn word(&mut self) -> VMSuccess {
+    fn input_word(&mut self) -> VMResult<(u32, u32)> {
         let mut i = 0;
         loop {
             let b = self.input_byte()?;
@@ -325,8 +340,13 @@ impl VM {
                 }
             }
         }
-        self.push_data(ADDR_WORD_BUFFER);
-        self.push_data(i);
+        Ok((ADDR_WORD_BUFFER, i))
+    }
+
+    fn word(&mut self) -> VMSuccess {
+        let (addr, len) = self.input_word()?;
+        self.push_data(addr);
+        self.push_data(len);
         Ok(())
     }
 
@@ -376,6 +396,14 @@ impl VM {
                 self.push_data(a);
                 self.push_data(b);
             }
+            Op::ToR => {
+                let val = self.pop_data()?;
+                self.push_return(val);
+            }
+            Op::FromR => {
+                let val = self.pop_return()?;
+                self.push_data(val);
+            }
             Op::Fetch => {
                 let addr = self.pop_data()?;
                 let data = self.read_u32(addr)?;
@@ -387,9 +415,29 @@ impl VM {
                 self.write_u32(addr, val)?;
             }
             Op::Add => {
-                let a = self.pop_data()?;
                 let b = self.pop_data()?;
+                let a = self.pop_data()?;
                 self.push_data(a.wrapping_add(b));
+            }
+            Op::Subtract => {
+                let b = self.pop_data()?;
+                let a = self.pop_data()?;
+                self.push_data(a.wrapping_sub(b));
+            }
+            Op::Multiply => {
+                let b = self.pop_data()?;
+                let a = self.pop_data()?;
+                self.push_data(a.wrapping_mul(b));
+            }
+            Op::Divide => {
+                let b = self.pop_data()?;
+                let a = self.pop_data()?;
+                self.push_data(a.wrapping_div(b));
+            }
+            Op::Modulus => {
+                let b = self.pop_data()?;
+                let a = self.pop_data()?;
+                self.push_data(a.wrapping_rem(b));
             }
             Op::Lit => {
                 self.push_data(self.read_u32(self.pc)?);
@@ -430,6 +478,21 @@ impl VM {
                     print!(">");
                     std::io::stdout().flush().expect("io error");
                     self.line = false;
+                }
+            }
+            Op::Interpret => {
+                let (addr, len) = self.input_word()?;
+                let header_addr = self.find_word(addr, len as u8)?;
+                if header_addr > 0 {
+                    let xt = self.header_addr_to_cfa(header_addr)?;
+                    self.exec(xt)?;
+                } else {
+                    let (value, error) = self.parse_number(addr, len)?;
+                    if error == 0 {
+                        self.push_data(value)
+                    } else {
+                        return Err(VMError::UnknownWord);
+                    }
                 }
             }
             Op::Unknown => return Err(VMError::UnknownOpcode),
