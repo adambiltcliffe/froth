@@ -25,12 +25,21 @@ enum Op {
     ToR,
     FromR,
     Fetch,
+    CFetch,
     Store,
+    CStore,
     Add,
     Subtract,
     Multiply,
     Divide,
     Modulus,
+    Equals,
+    LessThan,
+    GreaterThan,
+    And,
+    Or,
+    Xor,
+    Invert,
     Lit,
     Key,
     Word,
@@ -409,10 +418,20 @@ impl VM {
                 let data = self.read_u32(addr)?;
                 self.push_data(data);
             }
+            Op::CFetch => {
+                let addr = self.pop_data()?;
+                let data = self.read_u8(addr)?;
+                self.push_data(data as u32);
+            }
             Op::Store => {
                 let addr = self.pop_data()?;
                 let val = self.pop_data()?;
                 self.write_u32(addr, val)?;
+            }
+            Op::CStore => {
+                let addr = self.pop_data()?;
+                let val = self.pop_data()? as u8;
+                self.write_u8(addr, val)?;
             }
             Op::Add => {
                 let b = self.pop_data()?;
@@ -438,6 +457,40 @@ impl VM {
                 let b = self.pop_data()?;
                 let a = self.pop_data()?;
                 self.push_data(a.wrapping_rem(b));
+            }
+            Op::Equals => {
+                let b = self.pop_data()?;
+                let a = self.pop_data()?;
+                self.push_data(if a == b { 1 } else { 0 });
+            }
+            Op::LessThan => {
+                let b = self.pop_data()? as i32;
+                let a = self.pop_data()? as i32;
+                self.push_data(if a < b { 1 } else { 0 });
+            }
+            Op::GreaterThan => {
+                let b = self.pop_data()? as i32;
+                let a = self.pop_data()? as i32;
+                self.push_data(if a > b { 1 } else { 0 });
+            }
+            Op::And => {
+                let b = self.pop_data()?;
+                let a = self.pop_data()?;
+                self.push_data(a & b);
+            }
+            Op::Or => {
+                let b = self.pop_data()?;
+                let a = self.pop_data()?;
+                self.push_data(a | b);
+            }
+            Op::Xor => {
+                let b = self.pop_data()?;
+                let a = self.pop_data()?;
+                self.push_data(a ^ b);
+            }
+            Op::Invert => {
+                let a = self.pop_data()?;
+                self.push_data(!a);
             }
             Op::Lit => {
                 self.push_data(self.read_u32(self.pc)?);

@@ -37,12 +37,21 @@ impl VM {
         let _tor = self.add_builtin_word(">r", Op::ToR);
         let _fromr = self.add_builtin_word("r>", Op::FromR);
         let _fetch = self.add_builtin_word("@", Op::Fetch);
-        let _store = self.add_builtin_word("!", Op::Store);
+        let _cfetch = self.add_builtin_word("c@", Op::CFetch);
+        let _cstore = self.add_builtin_word("!", Op::Store);
+        let _store = self.add_builtin_word("c!", Op::CStore);
         let _add = self.add_builtin_word("+", Op::Add);
         let _subtract = self.add_builtin_word("-", Op::Subtract);
         let _multiply = self.add_builtin_word("*", Op::Multiply);
         let _divide = self.add_builtin_word("/", Op::Divide);
         let _modulus = self.add_builtin_word("%", Op::Modulus);
+        let _equals = self.add_builtin_word("=", Op::Equals);
+        let _lt = self.add_builtin_word("<", Op::LessThan);
+        let _gt = self.add_builtin_word(">", Op::GreaterThan);
+        let _and = self.add_builtin_word("and", Op::And);
+        let _or = self.add_builtin_word("or", Op::Or);
+        let _xor = self.add_builtin_word("xor", Op::Xor);
+        let _invert = self.add_builtin_word("invert", Op::Invert);
         let lit = self.add_builtin_word("lit", Op::Lit);
         let _key = self.add_builtin_word("key", Op::Key);
         let _word = self.add_builtin_word("word", Op::Word);
@@ -58,7 +67,6 @@ impl VM {
         let prompt = self.add_builtin_word("prompt", Op::Prompt);
         let interpret = self.add_builtin_word("interpret", Op::Interpret);
 
-        let _one = self.add_colon_word("one", vec![lit, 1, exit]); // temporary
         let _base = self.add_colon_word("base", vec![lit, ADDR_BASE, exit]);
         let _here = self.add_colon_word("here", vec![lit, ADDR_HERE, exit]);
         let _latest = self.add_colon_word("latest", vec![lit, ADDR_LATEST, exit]);
@@ -71,7 +79,6 @@ impl VM {
         self.set_entry_point(quit);
 
         // need to do these in the VM or explicitly in here
-        // =, <, >, and, or, xor, invert, c@, c!
         // :, ,, c,, ;, [, ], immediate, hidden, hide, ', 0branch, litstring, tell, char
 
         // we can implement these in pure Forth once we have compilation working:
