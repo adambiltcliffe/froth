@@ -42,6 +42,7 @@ impl VM {
         let word = self.add_builtin_word("word", Op::Word);
         let _emit = self.add_builtin_word("emit", Op::Emit);
         let find = self.add_builtin_word("find", Op::Find);
+        let number = self.add_builtin_word("number", Op::Number);
         let to_cfa = self.add_builtin_word(">cfa", Op::ToCFA);
         let _create = self.add_builtin_word("create", Op::Create);
         let execute = self.add_builtin_word("execute", Op::Execute);
@@ -56,6 +57,7 @@ impl VM {
         let _latest = self.add_colon_word("latest", vec![lit, ADDR_LATEST, exit]);
         let _state = self.add_colon_word("state", vec![lit, ADDR_STATE, exit]);
         let interpret = self.add_colon_word("interpret", vec![word, find, to_cfa, execute, exit]);
+        let _test = self.add_colon_word("test", vec![word, number, exit]);
         let quit = self.add_colon_word(
             "quit",
             vec![reset, prompt, interpret, branch, -12i32 as u32],

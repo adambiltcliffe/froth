@@ -30,6 +30,7 @@ enum Op {
     Word,
     Emit,
     Find,
+    Number,
     ToCFA,
     Create,
     Execute,
@@ -66,6 +67,13 @@ fn error_name(err: &VMError) -> &'static str {
 
 fn align_addr(addr: u32) -> u32 {
     ((addr + 3) / 4) * 4
+}
+
+fn digit_val(digit: char) -> u32 {
+    if digit >= '0' && digit <= '9' {
+        return (digit as u32).wrapping_sub('0' as u32);
+    }
+    (digit as u32).wrapping_sub('a' as u32).wrapping_add(10)
 }
 
 type VMResult<T> = Result<T, VMError>;
@@ -222,6 +230,43 @@ impl VM {
         Ok(())
     }
 
+    fn number(&mut self) -> VMSuccess {
+        let base = self.read_u32(ADDR_BASE)?;
+        let len = self.pop_data()?;
+        let addr = self.pop_data()?;
+        let mut offs = 0;
+        let sym = self.read_u8(addr)?;
+        let sign = if sym as char == '-' && len > 1 {
+            offs += 1;
+            -1i32
+        } else {
+            1i32
+        };
+        let mut result = 0;
+        while offs < len {
+            let sym = self.read_u8(addr + offs)? as char;
+            let val = digit_val(sym);
+            println!("digit is {}, digit value is {}", sym, val);
+            if val < base {
+                result *= base;
+                result += val;
+                offs += 1
+            } else {
+                break;
+            }
+        }
+        if offs == 1 && sign == -1 {
+            // only character parsed was '-'
+            self.push_data(0);
+            self.push_data(len); // no characters consumed, indicating error
+        } else {
+            self.push_data((result as i32 * sign) as u32);
+            self.push_data(len - offs);
+            println!("result was {}", (result as i32 * sign) as u32);
+        }
+        Ok(())
+    }
+
     fn header_addr_to_cfa(&self, addr: u32) -> VMResult<u32> {
         let len = self.read_u8(addr + 4)?;
         Ok(addr + len as u32 + 5)
@@ -351,6 +396,7 @@ impl VM {
                 self.pc += 4;
             }
             Op::Find => self.find()?,
+            Op::Number => self.number()?,
             Op::ToCFA => {
                 let header_addr = self.pop_data()?;
                 self.push_data(self.header_addr_to_cfa(header_addr)?);
@@ -441,7 +487,7 @@ fn main() {
     let mut vm = VM::new();
     vm.init();
     while vm.running {
-        //vm.display();
+        vm.display();
         vm.step();
     }
 }
