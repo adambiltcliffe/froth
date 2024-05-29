@@ -15,6 +15,10 @@ const INITIAL_HERE: u32 = 48;
 
 const MAX_EXTEND: u32 = 64;
 
+const HIDDEN_FLAG: u8 = 32;
+const IMMEDIATE_FLAG: u8 = 64;
+const LENGTH_MASK: u8 = 31;
+
 #[derive(FromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 enum Op {
@@ -28,6 +32,7 @@ enum Op {
     CFetch,
     Store,
     CStore,
+    Align,
     Add,
     Subtract,
     Multiply,
@@ -47,7 +52,13 @@ enum Op {
     Find,
     Number,
     ToCFA,
+    LBracket,
+    RBracket,
     Create,
+    Comma,
+    CComma,
+    Immediate,
+    Hidden,
     Execute,
     Branch,
     Exit,
@@ -103,6 +114,7 @@ struct VM {
     return_stack: Vec<u32>,
     pc: u32,
     entry: u32,
+    lit: u32,
     input: Peekable<Bytes<Stdin>>,
     running: bool,
     line: bool,
@@ -117,6 +129,7 @@ impl VM {
             return_stack: Vec::new(),
             pc: 0,
             entry: 0,
+            lit: 0,
             input: std::io::stdin().bytes().peekable(),
             running: true,
             line: true,
@@ -224,7 +237,7 @@ impl VM {
     fn find_word(&self, addr: u32, len: u8) -> VMResult<u32> {
         let mut search_addr = self.read_u32(ADDR_LATEST)?;
         while search_addr != 0 {
-            if self.read_u8(search_addr + 4)? == len {
+            if self.read_u8(search_addr + 4)? & (LENGTH_MASK | HIDDEN_FLAG) == len {
                 let mut found = true;
                 for i in 0u32..len as u32 {
                     if self.read_u8(search_addr + 5 + i)? != self.read_u8(addr + i)? {
@@ -271,7 +284,6 @@ impl VM {
         while offs < len {
             let sym = self.read_u8(addr + offs)? as char;
             let val = digit_val(sym);
-            println!("digit is {}, digit value is {}", sym, val);
             if val < base {
                 result *= base;
                 result += val;
@@ -286,13 +298,12 @@ impl VM {
         } else {
             let value = (result as i32 * sign) as u32;
             let error = len - offs;
-            println!("result was {}", (result as i32 * sign) as u32);
             return Ok((value, error));
         }
     }
 
     fn header_addr_to_cfa(&self, addr: u32) -> VMResult<u32> {
-        let len = self.read_u8(addr + 4)?;
+        let len = self.read_u8(addr + 4)? & LENGTH_MASK;
         Ok(addr + len as u32 + 5)
     }
 
@@ -313,6 +324,20 @@ impl VM {
         }
         self.write_u32(ADDR_HERE, here)?;
         Ok(())
+    }
+
+    fn immediate(&mut self) -> VMSuccess {
+        let header_addr = self.read_u32(ADDR_LATEST)?;
+        let byte = self.read_u8(header_addr + 4)?;
+        let byte = byte ^ IMMEDIATE_FLAG;
+        self.write_u8(header_addr + 4, byte)
+    }
+
+    fn hidden(&mut self) -> VMSuccess {
+        let header_addr = self.pop_data()?;
+        let byte = self.read_u8(header_addr + 4)?;
+        let byte = byte ^ HIDDEN_FLAG;
+        self.write_u8(header_addr + 4, byte)
     }
 
     fn input_byte(&mut self) -> VMResult<u8> {
@@ -433,6 +458,7 @@ impl VM {
                 let val = self.pop_data()? as u8;
                 self.write_u8(addr, val)?;
             }
+            Op::Align => self.align()?,
             Op::Add => {
                 let b = self.pop_data()?;
                 let a = self.pop_data()?;
@@ -493,7 +519,8 @@ impl VM {
                 self.push_data(!a);
             }
             Op::Lit => {
-                self.push_data(self.read_u32(self.pc)?);
+                let value = self.read_u32(self.pc)?;
+                self.push_data(value);
                 self.pc += 4;
             }
             Op::Find => self.find()?,
@@ -502,6 +529,10 @@ impl VM {
                 let header_addr = self.pop_data()?;
                 self.push_data(self.header_addr_to_cfa(header_addr)?);
             }
+            Op::LBracket => self.write_u32(ADDR_STATE, 0)?,
+            Op::RBracket => self.write_u32(ADDR_STATE, 1)?,
+            Op::Immediate => self.immediate()?,
+            Op::Hidden => self.hidden()?,
             Op::Key => {
                 let data = self.input_byte()? as u32;
                 self.push_data(data)
@@ -509,6 +540,14 @@ impl VM {
             Op::Word => self.word()?,
             Op::Emit => print!("{}", self.pop_data()? as u8 as char),
             Op::Create => self.create()?,
+            Op::Comma => {
+                let val = self.pop_data()?;
+                self.write_u32_here(val)?;
+            }
+            Op::CComma => {
+                let val = self.pop_data()? as u8;
+                self.write_u8_here(val)?;
+            }
             Op::Execute => {
                 let xt = self.pop_data()?;
                 self.exec(xt)?;
@@ -534,21 +573,35 @@ impl VM {
                 }
             }
             Op::Interpret => {
+                let compiling = self.read_u32(ADDR_STATE)? != 0;
                 let (addr, len) = self.input_word()?;
                 let header_addr = self.find_word(addr, len as u8)?;
                 if header_addr > 0 {
+                    let immediate = (self.read_u8(header_addr + 4)? & IMMEDIATE_FLAG) != 0;
                     let xt = self.header_addr_to_cfa(header_addr)?;
-                    self.exec(xt)?;
+                    if compiling && !immediate {
+                        self.write_u32_here(xt)?;
+                    } else {
+                        self.exec(xt)?;
+                    }
                 } else {
                     let (value, error) = self.parse_number(addr, len)?;
                     if error == 0 {
-                        self.push_data(value)
+                        if compiling {
+                            self.write_u32_here(self.lit)?;
+                            self.write_u32_here(value)?;
+                        } else {
+                            self.push_data(value)
+                        }
                     } else {
                         return Err(VMError::UnknownWord);
                     }
                 }
             }
-            Op::Unknown => return Err(VMError::UnknownOpcode),
+            Op::Unknown => {
+                println!("opcode is {}", op as u8);
+                return Err(VMError::UnknownOpcode);
+            }
         }
         Ok(())
     }
@@ -599,11 +652,14 @@ fn str_to_bytes(s: &str) -> Vec<u8> {
 }
 
 fn main() {
-    println!("Hello, world!");
+    use std::env::args;
+    let verbose = args().any(|s| s == "--verbose");
     let mut vm = VM::new();
     vm.init();
     while vm.running {
-        vm.display();
+        if verbose {
+            vm.display();
+        }
         vm.step();
     }
 }
