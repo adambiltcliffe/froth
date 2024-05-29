@@ -61,6 +61,7 @@ enum Op {
     Hidden,
     Execute,
     Branch,
+    BranchIfZero,
     Exit,
     Reset,
     Prompt,
@@ -555,6 +556,15 @@ impl VM {
             Op::Branch => {
                 let offs = self.read_u32(self.pc)?;
                 self.pc = self.pc.wrapping_sub(4).wrapping_add(offs);
+            }
+            Op::BranchIfZero => {
+                let condition = self.pop_data()?;
+                let offs = self.read_u32(self.pc)?;
+                if condition == 0 {
+                    self.pc = self.pc.wrapping_sub(4).wrapping_add(offs);
+                } else {
+                    self.pc += 4;
+                }
             }
             Op::Exit => self.pc = self.pop_return()?,
             Op::Reset => self.return_stack.clear(),

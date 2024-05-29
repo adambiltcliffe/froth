@@ -72,6 +72,7 @@ impl VM {
         let hidden = self.add_builtin_word("hidden", Op::Hidden);
         let _execute = self.add_builtin_word("execute", Op::Execute);
         let branch = self.add_builtin_word("branch", Op::Branch);
+        let _branchif0 = self.add_builtin_word("0branch", Op::BranchIfZero);
         let exit = self.add_builtin_word("exit", Op::Exit);
         let reset = self.add_builtin_word("reset", Op::Reset);
         let prompt = self.add_builtin_word("prompt", Op::Prompt);
@@ -110,11 +111,11 @@ impl VM {
         self.set_entry_point(quit);
 
         // need to do these in the VM or explicitly in here
-        // hide, ', 0branch, litstring, tell, char
+        // litstring
 
         // we can implement these in pure Forth once we have compilation working:
         // over, rot, -rot, ?dup, 1+, 1-, 4+, 4-, <>, <=, >=, 0=, 0<>, 0<, 0>, 0<=, 0>=
-        // not, negate, +!, -!, >dfa, /, mod
+        // not, negate, +!, -!, >dfa, /mod, hide, char, ', tell
         // 2drop, 2dup, 2swap
     }
 }
