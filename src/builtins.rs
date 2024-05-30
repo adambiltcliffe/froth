@@ -70,6 +70,7 @@ impl VM {
         let _immediate = self.add_builtin_word("immediate", Op::Immediate);
         self.immediate().unwrap(); // 'immediate' is an immediate word
         let hidden = self.add_builtin_word("hidden", Op::Hidden);
+        let _tick = self.add_builtin_word("'", Op::Tick);
         let _execute = self.add_builtin_word("execute", Op::Execute);
         let branch = self.add_builtin_word("branch", Op::Branch);
         let _branchif0 = self.add_builtin_word("0branch", Op::BranchIfZero);

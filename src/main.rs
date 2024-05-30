@@ -58,6 +58,7 @@ enum Op {
     CComma,
     Immediate,
     Hidden,
+    Tick,
     Execute,
     Branch,
     BranchIfZero,
@@ -549,6 +550,11 @@ impl VM {
             Op::CComma => {
                 let val = self.pop_data()? as u8;
                 self.write_u8_here(val)?;
+            }
+            Op::Tick => {
+                let xt = self.read_u32(self.pc)?;
+                self.pc += 4;
+                self.push_data(xt);
             }
             Op::Execute => {
                 let xt = self.pop_data()?;
