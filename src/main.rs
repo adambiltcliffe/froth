@@ -1,7 +1,6 @@
 use num_enum::{FromPrimitive, IntoPrimitive};
 use std::fs::File;
-use std::io::{BufReader, Bytes, Read, Stdin, Write};
-use std::iter::Chain;
+use std::io::{BufReader, Read, Write};
 
 mod builtins;
 
@@ -116,7 +115,7 @@ struct VM {
     pc: u32,
     entry: u32,
     lit: u32,
-    input: Chain<Bytes<BufReader<File>>, Bytes<Stdin>>,
+    input: Box<dyn Iterator<Item = std::io::Result<u8>>>,
     running: bool,
     line: bool,
     errors: Vec<VMError>,
@@ -125,7 +124,12 @@ struct VM {
 impl VM {
     fn new() -> Self {
         let f = File::open("prelude.f").expect("Could not open prelude");
-        let input = BufReader::new(f).bytes().chain(std::io::stdin().bytes());
+        let input = Box::new(
+            BufReader::new(f)
+                .bytes()
+                .map(|b| if matches!(b, Ok(13)) { Ok(32) } else { b })
+                .chain(std::io::stdin().bytes()),
+        );
         let mut me = Self {
             memory: vec![0; INITIAL_HERE as usize],
             data_stack: Vec::new(),
@@ -676,6 +680,7 @@ fn main() {
     let dump = args().any(|s| s == "--dump");
     let mut vm = VM::new();
     vm.init();
+    println!("[loading prelude]");
     while vm.running {
         if verbose {
             vm.display();

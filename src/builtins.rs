@@ -63,6 +63,7 @@ impl VM {
         let _number = self.add_builtin_word("number", Op::Number);
         let _to_cfa = self.add_builtin_word(">cfa", Op::ToCFA);
         let lbracket = self.add_builtin_word("[", Op::LBracket);
+        self.immediate().unwrap(); // '[' is an immediate word
         let rbracket = self.add_builtin_word("]", Op::RBracket);
         let create = self.add_builtin_word("create", Op::Create);
         let comma = self.add_builtin_word(",", Op::Comma);

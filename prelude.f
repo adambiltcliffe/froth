@@ -36,6 +36,11 @@
 : bl        32 ;
 : space     bl emit ;
 : cr        10 emit ;
+: char      word drop c@ ;
+
+: literal       ' lit , , ;             immediate
+: 'A'           [ char A ] literal ;
+: '0'           [ char 0 ] literal ;
 
 : [compile]     word find >cfa , ;      immediate
 : recurse       latest @ >cfa , ;       immediate
