@@ -44,3 +44,8 @@
 
 : [compile]     word find >cfa , ;      immediate
 : recurse       latest @ >cfa , ;       immediate
+
+: if            ' 0branch , here @ 0 , ;
+                                        immediate
+: then          dup here @ swap - 4+ swap ! ;
+                                        immediate
