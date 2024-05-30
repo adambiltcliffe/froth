@@ -114,8 +114,6 @@ impl VM {
         // litstring
 
         // we can implement these in pure Forth once we have compilation working:
-        // rot, -rot, ?dup, 1+, 1-, 4+, 4-, <>, <=, >=, 0=, 0<>, 0<, 0>, 0<=, 0>=
-        // not, negate, +!, -!, >dfa, /mod, hide, char, ', tell
-        // 2drop, 2dup, 2swap
+        // ?dup, char, ', tell
     }
 }

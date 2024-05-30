@@ -413,7 +413,6 @@ impl VM {
 
     fn exec(&mut self, addr: u32) -> VMSuccess {
         let op: Op = self.read_u8(addr)?.into();
-        println!("opcode is {}", op as u8);
         match op {
             Op::DoColonDef => {
                 self.push_return(self.pc);
@@ -435,12 +434,10 @@ impl VM {
             }
             Op::ToR => {
                 let val = self.pop_data()?;
-                println!("moving {} from data stack to return stack", val);
                 self.push_return(val);
             }
             Op::FromR => {
                 let val = self.pop_return()?;
-                println!("moving {} from return stack to data stack", val);
                 self.push_data(val);
             }
             Op::Fetch => {
@@ -613,7 +610,6 @@ impl VM {
                 }
             }
             Op::Unknown => {
-                println!("opcode is {}", op as u8);
                 return Err(VMError::UnknownOpcode);
             }
         }
@@ -635,6 +631,9 @@ impl VM {
                 .map(|n| format!("{:x}", n))
                 .collect::<Vec<_>>()
         );
+    }
+
+    fn dump(&self) {
         print!("Contents of memory:");
         let mut line = String::with_capacity(16);
         for (i, byte) in self.memory.iter().enumerate() {
@@ -668,11 +667,15 @@ fn str_to_bytes(s: &str) -> Vec<u8> {
 fn main() {
     use std::env::args;
     let verbose = args().any(|s| s == "--verbose");
+    let dump = args().any(|s| s == "--dump");
     let mut vm = VM::new();
     vm.init();
     while vm.running {
         if verbose {
             vm.display();
+        }
+        if dump {
+            vm.dump();
         }
         vm.step();
     }
