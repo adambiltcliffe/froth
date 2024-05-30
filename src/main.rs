@@ -1,8 +1,7 @@
 use num_enum::{FromPrimitive, IntoPrimitive};
-use std::{
-    io::{Bytes, Read, Stdin, Write},
-    iter::Peekable,
-};
+use std::fs::File;
+use std::io::{BufReader, Bytes, Read, Stdin, Write};
+use std::iter::Chain;
 
 mod builtins;
 
@@ -19,7 +18,7 @@ const HIDDEN_FLAG: u8 = 32;
 const IMMEDIATE_FLAG: u8 = 64;
 const LENGTH_MASK: u8 = 31;
 
-#[derive(FromPrimitive, IntoPrimitive)]
+#[derive(FromPrimitive, IntoPrimitive, Copy, Clone)]
 #[repr(u8)]
 enum Op {
     DoColonDef = 0,
@@ -116,7 +115,7 @@ struct VM {
     pc: u32,
     entry: u32,
     lit: u32,
-    input: Peekable<Bytes<Stdin>>,
+    input: Chain<Bytes<BufReader<File>>, Bytes<Stdin>>,
     running: bool,
     line: bool,
     errors: Vec<VMError>,
@@ -124,6 +123,8 @@ struct VM {
 
 impl VM {
     fn new() -> Self {
+        let f = File::open("prelude.f").expect("Could not open prelude");
+        let input = BufReader::new(f).bytes().chain(std::io::stdin().bytes());
         let mut me = Self {
             memory: vec![0; INITIAL_HERE as usize],
             data_stack: Vec::new(),
@@ -131,7 +132,7 @@ impl VM {
             pc: 0,
             entry: 0,
             lit: 0,
-            input: std::io::stdin().bytes().peekable(),
+            input,
             running: true,
             line: true,
             errors: Vec::new(),
@@ -412,6 +413,7 @@ impl VM {
 
     fn exec(&mut self, addr: u32) -> VMSuccess {
         let op: Op = self.read_u8(addr)?.into();
+        println!("opcode is {}", op as u8);
         match op {
             Op::DoColonDef => {
                 self.push_return(self.pc);
@@ -433,10 +435,12 @@ impl VM {
             }
             Op::ToR => {
                 let val = self.pop_data()?;
+                println!("moving {} from data stack to return stack", val);
                 self.push_return(val);
             }
             Op::FromR => {
                 let val = self.pop_return()?;
+                println!("moving {} from return stack to data stack", val);
                 self.push_data(val);
             }
             Op::Fetch => {
