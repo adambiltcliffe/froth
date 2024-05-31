@@ -8,5 +8,5 @@ You can try it out by running the following, but you'll need to specify the `--v
 
 ```
 : fac dup 1 > if dup 1- recurse * then ;
-fac 10
+10 fac
 ```
