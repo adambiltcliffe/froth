@@ -47,5 +47,7 @@
 
 : if            ' 0branch , here @ 0 , ;
                                         immediate
+: unless        ' not , [compile] if ;
+                                        immediate
 : then          dup here @ swap - 4+ swap ! ;
                                         immediate
