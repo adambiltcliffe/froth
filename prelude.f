@@ -4,6 +4,9 @@
 : negate    0 swap - ;
 : 0=        0 = ;
 
+: /         /mod swap drop ;
+: mod       /mod drop ;
+
 : 1+        1 + ;
 : 1-        1 - ;
 : 4+        4 + ;

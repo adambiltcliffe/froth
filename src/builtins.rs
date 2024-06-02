@@ -47,8 +47,7 @@ impl VM {
         let _add = self.add_builtin_word("+", Op::Add);
         let _subtract = self.add_builtin_word("-", Op::Subtract);
         let _multiply = self.add_builtin_word("*", Op::Multiply);
-        let _divide = self.add_builtin_word("/", Op::Divide);
-        let _modulus = self.add_builtin_word("%", Op::Modulus);
+        let _divide = self.add_builtin_word("/mod", Op::DivMod);
         let _equals = self.add_builtin_word("=", Op::Equals);
         let _lt = self.add_builtin_word("<", Op::LessThan);
         let _gt = self.add_builtin_word(">", Op::GreaterThan);

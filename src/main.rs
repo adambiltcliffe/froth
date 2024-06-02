@@ -35,8 +35,7 @@ enum Op {
     Add,
     Subtract,
     Multiply,
-    Divide,
-    Modulus,
+    DivMod,
     Equals,
     LessThan,
     GreaterThan,
@@ -482,15 +481,11 @@ impl VM {
                 let a = self.pop_data()?;
                 self.push_data(a.wrapping_mul(b));
             }
-            Op::Divide => {
-                let b = self.pop_data()?;
-                let a = self.pop_data()?;
-                self.push_data(a.wrapping_div(b));
-            }
-            Op::Modulus => {
+            Op::DivMod => {
                 let b = self.pop_data()?;
                 let a = self.pop_data()?;
                 self.push_data(a.wrapping_rem(b));
+                self.push_data(a.wrapping_div(b));
             }
             Op::Equals => {
                 let b = self.pop_data()?;
