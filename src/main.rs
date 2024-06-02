@@ -687,11 +687,14 @@ fn main() {
     vm.init();
     println!("[loading prelude]");
     while vm.running {
-        if verbose {
-            vm.display();
-        }
         if dump {
             vm.dump();
+        }
+        if verbose {
+            vm.display();
+            if vm.read_u32(ADDR_STATE).unwrap() != 0 {
+                println!("[compile mode]");
+            }
         }
         vm.step();
     }
