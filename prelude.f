@@ -22,9 +22,11 @@
 
 : literal       ' lit , , ;             immediate
 : 'A'           [ char A ] literal ;
+: 'a'           [ char a ] literal ;
 : '0'           [ char 0 ] literal ;
 : '('           [ char ( ] literal ;
 : ')'           [ char ) ] literal ;
+: '-'           [ char - ] literal ;
 
 : [compile]     word find >cfa , ;      immediate
 : recurse       latest @ >cfa , ;       immediate
@@ -69,9 +71,10 @@ so from this point we can actually include comments in the prelude! )
 : rot       >r swap r> swap ;
 : -rot      swap >r swap r> ;
 
-( pick and roll would be much more efficient if defined in the VM, but
-  we're aiming to keep it small. )
+( ?dup, pick and roll would be much more efficient if defined in the VM,
+  but we're aiming to keep it small. )
 
+: ?dup      dup if dup then ;
 : pick      dup 0= if drop dup exit then swap >r 1- recurse r> swap ;
 : roll      dup if swap >r 1- recurse r> swap exit then drop ;
 
@@ -99,3 +102,20 @@ so from this point we can actually include comments in the prelude! )
 : spaces    begin dup 0> while space 1- repeat drop ;
 : decimal   10 base ! ;
 : hex       16 base ! ;
+
+: u.        base @ /mod
+            ( Print the quotient )
+            ?dup if recurse then
+            ( Print the remainder )
+            dup 10 < if '0' else 10 - 'a' then + emit ;
+: uwidth    base @ / ?dup if recurse 1+ else 1 then ;
+: u.r       swap dup uwidth rot swap - spaces u. ;
+: .r        swap dup 0< if
+                negate 1 swap rot 1-
+            else
+                0 swap rot
+            then swap dup uwidth rot swap - spaces swap
+            if '-' emit then u. ;
+: .         0 .r space ;
+( Note that we shadow the original definition of u. here )
+: u.        u. space ;
