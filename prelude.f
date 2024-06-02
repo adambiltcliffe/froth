@@ -55,3 +55,9 @@
 : begin         here @ ;                immediate
 : until         ' 0branch , here @ - 4+ , ;
                                         immediate
+: again         ' branch , here @ - 4+ , ;
+                                        immediate
+: while         ' 0branch , here @ 0 , ;
+                                        immediate
+: repeat        ' branch , swap here @ - 4+ , dup here @ swap - 4+ swap ! ;
+                                        immediate
