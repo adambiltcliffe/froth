@@ -50,14 +50,16 @@
 : unless        ' not , [compile] if ;  immediate
 : then          dup here @ swap - 4+ swap ! ;
                                         immediate
-: else          ' branch , here @ 0 , swap dup here @ swap - 4+ swap ! ;
+: else          ' branch , here @ 0 , swap [compile] then ;
                                         immediate
 : begin         here @ ;                immediate
-: until         ' 0branch , here @ - 4+ , ;
+: end-loop      here @ - 4+ , ;
+: until         ' 0branch , end-loop ;
                                         immediate
-: again         ' branch , here @ - 4+ , ;
+: again         ' branch , end-loop ;
                                         immediate
 : while         ' 0branch , here @ 0 , ;
                                         immediate
-: repeat        ' branch , swap here @ - 4+ , dup here @ swap - 4+ swap ! ;
+: repeat        ' branch , swap end-loop [compile] then ;
                                         immediate
+hide end-loop
