@@ -119,3 +119,13 @@ so from this point we can actually include comments in the prelude! )
 : .         0 .r space ;
 ( Note that we shadow the original definition of u. here )
 : u.        u. space ;
+
+( And to finish off with a sense of pride and accomplishment for
+  everything we have made here ... )
+: count-words
+            0 latest @
+            begin
+                dup 0<>
+            while
+                @ swap 1+ swap
+            repeat drop ;
