@@ -1,4 +1,5 @@
 use num_enum::{FromPrimitive, IntoPrimitive};
+use std::borrow::Cow;
 use std::fs::File;
 use std::io::{BufReader, Read, Write};
 
@@ -77,20 +78,20 @@ enum VMError {
     ReturnStackUnderflow,
     UnalignedAccess,
     IOError,
-    UnknownWord,
+    UnknownWord(String),
     Terminated,
 }
 
-fn error_name(err: &VMError) -> &'static str {
+fn error_name(err: &VMError) -> Cow<'static, str> {
     match err {
-        VMError::IllegalAddress => "illegal address",
-        VMError::UnknownOpcode => "unknown opcode",
-        VMError::DataStackUnderflow => "data stack underflow",
-        VMError::ReturnStackUnderflow => "return stack underflow",
-        VMError::UnalignedAccess => "unaligned memory access",
-        VMError::IOError => "i/o error",
-        VMError::UnknownWord => "unknown word",
-        VMError::Terminated => "input terminated",
+        VMError::IllegalAddress => "illegal address".into(),
+        VMError::UnknownOpcode => "unknown opcode".into(),
+        VMError::DataStackUnderflow => "data stack underflow".into(),
+        VMError::ReturnStackUnderflow => "return stack underflow".into(),
+        VMError::UnalignedAccess => "unaligned memory access".into(),
+        VMError::IOError => "i/o error".into(),
+        VMError::UnknownWord(s) => format!("unknown word {}", s).into(),
+        VMError::Terminated => "input terminated".into(),
     }
 }
 
@@ -615,7 +616,11 @@ impl VM {
                             self.push_data(value)
                         }
                     } else {
-                        return Err(VMError::UnknownWord);
+                        let mut result = String::with_capacity(len as usize);
+                        for a in addr..(addr + len) {
+                            result.push(self.read_u8(a)? as char);
+                        }
+                        return Err(VMError::UnknownWord(result));
                     }
                 }
             }
