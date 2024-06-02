@@ -47,9 +47,11 @@
 
 : if            ' 0branch , here @ 0 , ;
                                         immediate
-: unless        ' not , [compile] if ;
-                                        immediate
+: unless        ' not , [compile] if ;  immediate
 : then          dup here @ swap - 4+ swap ! ;
                                         immediate
 : else          ' branch , here @ 0 , swap dup here @ swap - 4+ swap ! ;
+                                        immediate
+: begin         here @ ;                immediate
+: until         ' 0branch , here @ - 4+ , ;
                                         immediate
