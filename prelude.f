@@ -61,9 +61,16 @@ so from this point we can actually include comments in the prelude! )
 ( Define some extended stack manipulation primitives. )
 
 : over      >r dup r> swap ;
+: nip       swap drop ;
 : tuck      swap over ;
 : rot       >r swap r> swap ;
 : -rot      swap >r swap r> ;
+
+( pick and roll would be much more efficient if defined in the VM, but
+  we're aiming to keep it small. )
+
+: pick      dup 0= if drop dup exit then swap >r 1- recurse r> swap ;
+: roll      dup if swap >r 1- recurse r> swap exit then drop ;
 
 : 2drop     drop drop ;
 : 2dup      over over ;
@@ -83,3 +90,9 @@ so from this point we can actually include comments in the prelude! )
 
 : +!        tuck @ + swap ! ;
 : -!        tuck @ swap - swap ! ;
+
+( Now for some output functionality. )
+
+: spaces    begin dup 0> while space 1- repeat drop ;
+: decimal   10 base ! ;
+: hex       16 base ! ;
