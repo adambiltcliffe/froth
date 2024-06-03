@@ -25,6 +25,7 @@ enum Op {
     Dup,
     Drop,
     Swap,
+    Depth,
     ToR,
     FromR,
     Fetch,
@@ -436,6 +437,10 @@ impl VM {
                 let b = self.pop_data()?;
                 self.push_data(a);
                 self.push_data(b);
+            }
+            Op::Depth => {
+                let a = self.data_stack.len() as u32;
+                self.push_data(a);
             }
             Op::ToR => {
                 let val = self.pop_data()?;

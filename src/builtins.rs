@@ -37,6 +37,7 @@ impl VM {
         let _dup = self.add_builtin_word("dup", Op::Dup);
         let _drop = self.add_builtin_word("drop", Op::Drop);
         let _swap = self.add_builtin_word("swap", Op::Swap);
+        let _depth = self.add_builtin_word("depth", Op::Depth);
         let _tor = self.add_builtin_word(">r", Op::ToR);
         let _fromr = self.add_builtin_word("r>", Op::FromR);
         let fetch = self.add_builtin_word("@", Op::Fetch);

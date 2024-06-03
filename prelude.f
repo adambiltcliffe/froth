@@ -27,6 +27,8 @@
 : '('           [ char ( ] literal ;
 : ')'           [ char ) ] literal ;
 : '-'           [ char - ] literal ;
+: '<'           [ char < ] literal ;
+: '>'           [ char > ] literal ;
 
 : [compile]     word find >cfa , ;      immediate
 : recurse       latest @ >cfa , ;       immediate
@@ -119,6 +121,14 @@ so from this point we can actually include comments in the prelude! )
 : .         0 .r space ;
 ( Note that we shadow the original definition of u. here )
 : u.        u. space ;
+
+: .s        depth dup '<' emit 0 .r '>' emit 2 spaces
+            begin
+                dup 0>
+            while
+                dup pick u. 1-
+            repeat
+            drop ;
 
 ( And to finish off with a sense of pride and accomplishment for
   everything we have made here ... )
