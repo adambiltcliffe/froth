@@ -45,6 +45,7 @@ enum Op {
     Xor,
     Invert,
     Lit,
+    LitString,
     Key,
     Word,
     Emit,
@@ -530,6 +531,13 @@ impl VM {
                 let value = self.read_u32(self.pc)?;
                 self.push_data(value);
                 self.pc += 4;
+            }
+            Op::LitString => {
+                let len = self.read_u32(self.pc)?;
+                self.pc += 4;
+                self.push_data(self.pc);
+                self.push_data(len);
+                self.pc = align_addr(self.pc + len);
             }
             Op::Find => self.find()?,
             Op::Number => self.number()?,

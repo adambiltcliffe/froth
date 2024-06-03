@@ -59,6 +59,7 @@ impl VM {
         let _key = self.add_builtin_word("key", Op::Key);
         let word = self.add_builtin_word("word", Op::Word);
         let _emit = self.add_builtin_word("emit", Op::Emit);
+        let _litstring = self.add_builtin_word("litstring", Op::LitString);
         let _find = self.add_builtin_word("find", Op::Find);
         let _number = self.add_builtin_word("number", Op::Number);
         let _to_cfa = self.add_builtin_word(">cfa", Op::ToCFA);
@@ -112,10 +113,7 @@ impl VM {
 
         self.set_entry_point(quit);
 
-        // need to do these in the VM or explicitly in here
-        // litstring
-
         // we can implement these in pure Forth once we have compilation working:
-        // ?dup, char, ', tell
+        // ?dup, char, tell
     }
 }

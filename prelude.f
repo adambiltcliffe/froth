@@ -29,6 +29,7 @@
 : '-'           [ char - ] literal ;
 : '<'           [ char < ] literal ;
 : '>'           [ char > ] literal ;
+: '"'           [ char " ] literal ;
 
 : [compile]     word find >cfa , ;      immediate
 : recurse       latest @ >cfa , ;       immediate
@@ -129,6 +130,22 @@ so from this point we can actually include comments in the prelude! )
                 dup pick u. 1-
             repeat
             drop ;
+
+: s"        state @ if
+                ' litstring ,
+                here @ 0 ,
+                begin key dup '"' <> while c, repeat
+                drop
+                dup here @ swap -
+                4- swap ! align
+            else
+                here @
+                begin key dup '"' <> while over c! 1+ repeat
+                drop
+                here @ -
+                here @
+                swap
+            then ; immediate
 
 ( And to finish off with a sense of pride and accomplishment for
   everything we have made here ... )
