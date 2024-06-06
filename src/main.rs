@@ -78,6 +78,7 @@ enum VMError {
     DataStackUnderflow,
     ReturnStackUnderflow,
     UnalignedAccess,
+    MathError,
     IOError,
     UnknownWord(String),
     Terminated,
@@ -90,6 +91,7 @@ fn error_name(err: &VMError) -> Cow<'static, str> {
         VMError::DataStackUnderflow => "data stack underflow".into(),
         VMError::ReturnStackUnderflow => "return stack underflow".into(),
         VMError::UnalignedAccess => "unaligned memory access".into(),
+        VMError::MathError => "math error".into(),
         VMError::IOError => "i/o error".into(),
         VMError::UnknownWord(s) => format!("unknown word {}", s).into(),
         VMError::Terminated => "input terminated".into(),
@@ -495,6 +497,9 @@ impl VM {
             Op::DivMod => {
                 let b = self.pop_data()?;
                 let a = self.pop_data()?;
+                if b == 0 {
+                    return Err(VMError::MathError);
+                }
                 self.push_data(a.wrapping_rem(b));
                 self.push_data(a.wrapping_div(b));
             }
