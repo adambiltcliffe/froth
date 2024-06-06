@@ -108,8 +108,5 @@ impl VM {
         let quit = self.add_colon_word("quit", vec![reset, interpret, branch, -8i32 as u32]);
 
         self.set_entry_point(quit);
-
-        // we can implement these in pure Forth once we have compilation working:
-        // ?dup, char, tell
     }
 }

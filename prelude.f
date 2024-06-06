@@ -131,7 +131,10 @@ so from this point we can actually include comments in the prelude! )
             repeat
             drop ;
 
+( Now some string handling operations. )
+
 : s"        state @ if
+                ( In compile mode, copy the string into compiled word )
                 ' litstring ,
                 here @ 0 ,
                 begin key dup '"' <> while c, repeat
@@ -139,12 +142,31 @@ so from this point we can actually include comments in the prelude! )
                 dup here @ swap -
                 4- swap ! align
             else
+                ( If interpreting, copy to 'here' temporarily )
                 here @
                 begin key dup '"' <> while over c! 1+ repeat
                 drop
                 here @ -
                 here @
                 swap
+            then ; immediate
+
+: tell      over + swap
+            begin
+                2dup >
+            while
+                dup c@ emit
+                1+
+            repeat
+            2drop ;
+
+: ."        state @ if
+                [compile] s" ' tell ,
+            else
+                begin
+                    key dup '"' = if drop exit then
+                    emit
+                again
             then ; immediate
 
 ( And to finish off with a sense of pride and accomplishment for
@@ -156,3 +178,6 @@ so from this point we can actually include comments in the prelude! )
             while
                 @ swap 1+ swap
             repeat drop ;
+
+here @ . ." bytes of memory allocated." cr
+count-words . ." words defined." cr

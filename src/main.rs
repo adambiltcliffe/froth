@@ -2,6 +2,7 @@ use num_enum::{FromPrimitive, IntoPrimitive};
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::{BufReader, Read, Write};
+use std::iter::once;
 
 mod builtins;
 
@@ -129,6 +130,7 @@ impl VM {
             BufReader::new(f)
                 .bytes()
                 .map(|b| if matches!(b, Ok(13)) { Ok(32) } else { b })
+                .chain(once(Ok(13)))
                 .chain(std::io::stdin().bytes()),
         );
         let mut me = Self {
@@ -140,7 +142,7 @@ impl VM {
             lit: 0,
             input,
             running: true,
-            line: true,
+            line: false,
             errors: Vec::new(),
         };
         me.write_u32(ADDR_BASE, 10).unwrap();
