@@ -169,15 +169,41 @@ so from this point we can actually include comments in the prelude! )
                 again
             then ; immediate
 
-( And to finish off with a sense of pride and accomplishment for
-  everything we have made here ... )
+( Some utilities to display the dictionary )
+
+: id.       4+ dup c@ length-mask and
+            begin
+                dup 0>
+            while
+                swap 1+
+                dup c@ emit
+                swap 1-
+            repeat 2drop ;
+
+: ?hidden
+            4+ c@ hidden-flag and ;
+: ?immediate
+            4+ c@ immediate-flag and ;
+
+: words     latest @
+            begin ?dup
+            while
+                dup ?hidden not if
+                    dup id. space
+                then
+                @
+            repeat cr ;
+
+( And to finish off with a sense of pride and accomplishment for everything we have made here ... )
 : count-words
             0 latest @
-            begin
-                dup 0<>
+            begin ?dup
             while
-                @ swap 1+ swap
-            repeat drop ;
+                dup ?hidden not if
+                    swap 1+ swap
+                then
+                @
+            repeat ;
 
 here @ . ." bytes of memory allocated." cr
-count-words . ." words defined." cr
+count-words . ." words defined. Type 'words' to see them." cr

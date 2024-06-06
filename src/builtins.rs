@@ -1,4 +1,7 @@
-use crate::{align_addr, Op, ADDR_BASE, ADDR_HERE, ADDR_LATEST, ADDR_STATE, VM};
+use crate::{
+    align_addr, Op, ADDR_BASE, ADDR_HERE, ADDR_LATEST, ADDR_STATE, HIDDEN_FLAG, IMMEDIATE_FLAG,
+    LENGTH_MASK, VM,
+};
 
 impl VM {
     // note: add_builtin_word and add_colon_word don't return
@@ -80,10 +83,15 @@ impl VM {
         let reset = self.add_builtin_word("reset", Op::Reset);
         let interpret = self.add_builtin_word("interpret", Op::Interpret);
 
+        // expose builtin variables
         let _base = self.add_colon_word("base", vec![lit, ADDR_BASE, exit]);
         let _here = self.add_colon_word("here", vec![lit, ADDR_HERE, exit]);
         let latest = self.add_colon_word("latest", vec![lit, ADDR_LATEST, exit]);
         let _state = self.add_colon_word("state", vec![lit, ADDR_STATE, exit]);
+        let _hidden_flag = self.add_colon_word("hidden-flag", vec![lit, HIDDEN_FLAG.into(), exit]);
+        let _immediate_flag =
+            self.add_colon_word("immediate-flag", vec![lit, IMMEDIATE_FLAG.into(), exit]);
+        let _length_mask = self.add_colon_word("length-mask", vec![lit, LENGTH_MASK.into(), exit]);
         let _colon = self.add_colon_word(
             ":",
             vec![
