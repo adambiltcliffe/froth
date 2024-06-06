@@ -65,7 +65,6 @@ enum Op {
     BranchIfZero,
     Exit,
     Reset,
-    Prompt,
     Interpret,
     #[num_enum(default)]
     Unknown,
@@ -350,6 +349,10 @@ impl VM {
     }
 
     fn input_byte(&mut self) -> VMResult<u8> {
+        if self.line {
+            self.prompt();
+            self.line = false
+        }
         match self.input.next() {
             None => {
                 self.running = false;
@@ -588,20 +591,6 @@ impl VM {
             }
             Op::Exit => self.pc = self.pop_return()?,
             Op::Reset => self.return_stack.clear(),
-            Op::Prompt => {
-                if self.line {
-                    if self.errors.len() == 0 {
-                        println!(" ok")
-                    } else {
-                        for err in self.errors.drain(..) {
-                            println!(" {}", error_name(&err));
-                        }
-                    }
-                    print!(">");
-                    std::io::stdout().flush().expect("io error");
-                    self.line = false;
-                }
-            }
             Op::Interpret => {
                 let compiling = self.read_u32(ADDR_STATE)? != 0;
                 let (addr, len) = self.input_word()?;
@@ -637,6 +626,21 @@ impl VM {
             }
         }
         Ok(())
+    }
+
+    fn prompt(&mut self) {
+        if self.line {
+            if self.errors.len() == 0 {
+                println!(" ok")
+            } else {
+                for err in self.errors.drain(..) {
+                    println!(" {}", error_name(&err));
+                }
+            }
+            print!(">");
+            std::io::stdout().flush().expect("io error");
+            self.line = false;
+        }
     }
 
     fn display(&self) {

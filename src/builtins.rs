@@ -78,7 +78,6 @@ impl VM {
         let _branchif0 = self.add_builtin_word("0branch", Op::BranchIfZero);
         let exit = self.add_builtin_word("exit", Op::Exit);
         let reset = self.add_builtin_word("reset", Op::Reset);
-        let prompt = self.add_builtin_word("prompt", Op::Prompt);
         let interpret = self.add_builtin_word("interpret", Op::Interpret);
 
         let _base = self.add_colon_word("base", vec![lit, ADDR_BASE, exit]);
@@ -106,10 +105,7 @@ impl VM {
             vec![lit, exit, comma, latest, fetch, hidden, lbracket, exit],
         );
         self.immediate().unwrap(); // ';' is an immediate word
-        let quit = self.add_colon_word(
-            "quit",
-            vec![reset, prompt, interpret, branch, -12i32 as u32],
-        );
+        let quit = self.add_colon_word("quit", vec![reset, interpret, branch, -8i32 as u32]);
 
         self.set_entry_point(quit);
 
